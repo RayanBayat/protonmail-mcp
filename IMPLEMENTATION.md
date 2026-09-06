@@ -9,10 +9,10 @@ evidence, not planned work. Update as implementation and validation proceed.
 |---|---|---|
 | AC01 public fork and attribution | Complete | `RayanBayat/protonmail-mcp`, public, fork of `just-an-oldsalt/proto-mcp`; upstream history retained; GPL LICENSE unchanged; attribution in README |
 | AC02 spec and tracker first | Complete | SPEC.md and this file, created before portable implementation |
-| AC03 portable implementation | Complete | Node-only runtime; Go/macOS sources removed. Suite passes on Windows locally and on ubuntu-latest and macos-latest in CI (Node 22 and 24); only a test-side line-ending assumption failed on the Windows runner |
+| AC03 portable implementation | Complete | Node-only runtime; Go/macOS sources removed. The same suite passes on all three OSes against Node 22 and 24 in CI, and on Windows locally under Node 25.8 |
 | AC04 setup/doctor/config | Partly verified | `setup`/`doctor`/`config`/`serve`/`launch` implemented in `src/cli.mjs`; `saveVault` + `clientConfig` covered by `test/setup.test.mjs`. Interactive prompts and `launch` not automatically tested — they need a TTY and a live Bridge |
 | AC05 four read-only MCP tools | Complete | `test/mcp.test.mjs`: real subprocess, official SDK client, initialize, list-tools, all four tools, invalid args and unknown tool rejected |
-| AC06 OS tests | Linux/macOS green, Windows re-running | 14 tests across 3 OSes x Node 22/24 plus a dependency audit and a packaged-file check. Ubuntu and macOS passed in run 34050129686; the Windows fix is awaiting its first green run |
+| AC06 OS tests | Complete | Run 34050271822: all 7 jobs green - 14 tests on ubuntu-latest, windows-latest and macos-latest against Node 22 and 24, plus the dependency audit and packaged-file check |
 | AC07 security boundaries | Complete | `test/mailbox.test.mjs` asserts EXAMINE/BODY.PEEK, absence of mutating commands, certificate-mismatch rejection, credential-free errors, 2 MiB refusal before download, stale-ID and cursor binding; `test/config.test.mjs` loopback/TLS-only |
 | AC08 importable skill | Complete | `mailbox-mcp/skills/protonmail/SKILL.md`, validated by `test/skill.test.mjs` (frontmatter, four tools, untrusted-data framing, no machine-local state) |
 | AC09 live Bridge verification | Blocked on user setup | Bridge installed; no credentials accessed. Nothing in this ledger is evidence of real mailbox connectivity |
@@ -71,6 +71,11 @@ evidence, not planned work. Update as implementation and validation proceed.
   a defect in the test, not the server; fixed by normalizing line endings in
   the test and adding `.gitattributes` (`* text=auto eol=lf`). Verified by
   converting SKILL.md to CRLF locally and re-running.
+- 2026-09-06: CI run 34050271822 green on all 7 jobs - 14 tests on
+  ubuntu-latest, windows-latest and macos-latest against Node 22 and 24, plus
+  the audit and packaged-file checks. This is the first observed macOS and
+  Linux execution and it used synthetic data only; it is not evidence of
+  Proton Bridge compatibility.
 - 2026-09-06: added two security tests after confirming from ImapFlow's source
   that `options.tls` is merged into the STARTTLS upgrade — the certificate
   fingerprint check is now asserted on the STARTTLS path as well as implicit
