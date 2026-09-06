@@ -3,6 +3,14 @@
 This ledger tracks [SPEC.md](SPEC.md). Checkboxes mean completed work with
 evidence, not planned work. Update as implementation and validation proceed.
 
+## Release readiness
+
+- [x] Move the package to the repository root and remove the legacy runtime
+- [x] Keep installation instructions in README; omit the separate Codex guide as requested
+- [x] Add focused contributor/MR instructions and PR template
+- [x] Review feature surface and document read-only boundaries
+- [ ] Push the final branch and open/merge the fork PR into `main`
+
 ## Requirement traceability
 
 | Requirement | Status | Evidence / remaining work |
@@ -156,4 +164,4 @@ Recorded rather than glossed over:
 ## Pending external inputs
 
 - Local Bridge credentials and vault passphrase, entered in setup, never chat.
-- OS CI evidence after publication; no macOS/Linux run has been claimed yet.
+- Latest branch CI must pass before merge; prior three-OS evidence is recorded above.

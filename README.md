@@ -264,6 +264,9 @@ installs the package from a clean checkout on all three systems.
 Design and rationale: [SPEC.md](SPEC.md). Progress and evidence:
 [IMPLEMENTATION.md](IMPLEMENTATION.md).
 
+Adding a tool or skill: [CONTRIBUTING.md](CONTRIBUTING.md) explains module
+boundaries, focused pull requests, and developer checks.
+
 ## Attribution and license
 
 A fork of [`just-an-oldsalt/proto-mcp`](https://github.com/just-an-oldsalt/proto-mcp),
