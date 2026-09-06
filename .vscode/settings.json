@@ -1,0 +1,33 @@
+{
+  // .gitattributes forces LF in the repository; match it in the editor so a
+  // save does not produce a whole-file diff on Windows.
+  "files.eol": "\n",
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
+
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/pnpm-lock.yaml": true
+  },
+  "files.watcherExclude": {
+    "**/node_modules/**": true
+  },
+
+  "javascript.preferences.importModuleSpecifierEnding": "js",
+  "javascript.updateImportsOnFileMove.enabled": "always",
+
+  // Node's built-in runner, surfaced in the Test Explorer by the recommended
+  // extension. Helpers under test/ are excluded: everything in a test/
+  // directory is auto-discovered, and test/imap-fixture.mjs is a helper with
+  // no tests in it, which would otherwise show up as an empty suite.
+  "nodejs-testing.include": ["test"],
+  "nodejs-testing.exclude": ["test/imap-fixture.mjs"],
+  "nodejs-testing.extensions": [
+    { "extensions": ["mjs"], "parameters": ["--test"] }
+  ],
+
+  "terminal.integrated.env.windows": {},
+  "debug.javascript.terminalOptions": {
+    "skipFiles": ["<node_internals>/**"]
+  }
+}

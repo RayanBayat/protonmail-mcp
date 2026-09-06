@@ -23,8 +23,15 @@ test-output/
 # Editor / OS
 .DS_Store
 .idea/
-.vscode/
 *.swp
+
+# Shared VS Code run/debug/test configuration is committed; anything else
+# VS Code drops in there (per-user state) is not.
+.vscode/*
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/settings.json
+!.vscode/extensions.json
 
 # Superseded npm lockfile — pnpm-lock.yaml is the source of truth.
 package-lock.json

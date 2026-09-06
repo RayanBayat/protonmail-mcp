@@ -242,9 +242,38 @@ and why it was left behind.
 ```sh
 npm install -g pnpm
 pnpm install --frozen-lockfile
-pnpm test
+pnpm test                  # full suite, once
+pnpm run test:watch        # re-run on save
+pnpm run test:coverage     # per-file line/branch/function coverage
 pnpm audit --prod
 ```
+
+### In VS Code
+
+Open the folder and press <kbd>F5</kbd>. `.vscode/` is committed, so run,
+debug, and test configuration works from a fresh clone with no setup.
+
+**Debug configurations** (Run and Debug panel):
+
+| Configuration | What it does |
+|---|---|
+| Tests: all | Whole suite under the debugger. Attaches to child processes too, so breakpoints inside the server are hit during the MCP end-to-end test. |
+| Tests: current file | Just the file you have open. |
+| Tests: with coverage | Suite plus a coverage report. |
+| CLI: setup / doctor / config | Runs that command in the integrated terminal. |
+| CLI: serve | Prompts for the vault passphrase and passes it in the environment. VS Code holds it for the session only; it is never written to disk. |
+| Attach: running server | Attaches to a server started with `node --inspect`. Use this to debug tool calls coming from a real MCP host, which you cannot launch from here. |
+
+**Tasks** (<kbd>Ctrl/Cmd</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> → Run Task): install,
+test, test watch, test coverage, audit, doctor, and a `serve` task that starts
+with the inspector open for the attach configuration above.
+
+Installing the recommended extension (`connor4312.nodejs-testing`) puts the
+suite in the Test Explorer, so individual tests run and debug from the gutter.
+
+> Note: `setup` needs a real TTY, so its debug configuration uses the
+> integrated terminal rather than the Debug Console. Running it any other way
+> gives you `Run this command in an interactive terminal`.
 
 pnpm is used here for the reasons `uv` gets used in Python projects: it is
 fast, and its non-hoisted `node_modules` means a module can only import what

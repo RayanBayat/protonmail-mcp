@@ -1,0 +1,8 @@
+{
+  "recommendations": [
+    // Surfaces Node's built-in test runner in VS Code's Test Explorer, so
+    // individual tests can be run and debugged from the gutter.
+    "connor4312.nodejs-testing"
+  ],
+  "unwantedRecommendations": []
+}

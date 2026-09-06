@@ -1,0 +1,64 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "install",
+      "type": "shell",
+      "command": "pnpm install --frozen-lockfile",
+      "problemMatcher": [],
+      "detail": "Install dependencies exactly as pnpm-lock.yaml specifies"
+    },
+    {
+      "label": "test",
+      "type": "shell",
+      "command": "pnpm test",
+      "group": { "kind": "test", "isDefault": true },
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "problemMatcher": [],
+      "detail": "Run the full suite once"
+    },
+    {
+      "label": "test: watch",
+      "type": "shell",
+      "command": "pnpm run test:watch",
+      "isBackground": true,
+      "group": "test",
+      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "problemMatcher": [],
+      "detail": "Re-run affected tests on save"
+    },
+    {
+      "label": "test: coverage",
+      "type": "shell",
+      "command": "pnpm run test:coverage",
+      "group": "test",
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "problemMatcher": [],
+      "detail": "Run the suite and print a per-file coverage report"
+    },
+    {
+      "label": "audit",
+      "type": "shell",
+      "command": "pnpm audit --prod",
+      "problemMatcher": [],
+      "detail": "Check production dependencies for known vulnerabilities"
+    },
+    {
+      "label": "doctor",
+      "type": "shell",
+      "command": "node src/cli.mjs doctor",
+      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "problemMatcher": [],
+      "detail": "Verify TLS, Bridge login and read-only folder access"
+    },
+    {
+      "label": "serve: with inspector",
+      "type": "shell",
+      "command": "node --inspect src/cli.mjs serve",
+      "isBackground": true,
+      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "problemMatcher": [],
+      "detail": "Start the server paused for the 'Attach: running server' debug config. Needs PROTONMAIL_MCP_PASSPHRASE in this terminal's environment."
+    }
+  ]
+}

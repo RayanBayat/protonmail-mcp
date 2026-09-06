@@ -141,6 +141,26 @@ evidence, not planned work. Update as implementation and validation proceed.
   the check rather than in the package, but it is exactly the class of breakage
   no unit test would catch.
 
+- 2026-09-07: added committed VS Code configuration (`.vscode/launch.json`,
+  `tasks.json`, `settings.json`, `extensions.json`), with `.gitignore` narrowed
+  so those four are shared and per-user VS Code state is not. Debug configs
+  cover the suite, a single file, coverage, each CLI command, and attaching to
+  a `--inspect` server; `autoAttachChildProcesses` makes breakpoints work
+  inside the subprocess the MCP end-to-end test spawns. The `setup` config uses
+  the integrated terminal because setup requires a real TTY, and the `serve`
+  config takes the passphrase through a password-type prompt held in memory for
+  the session rather than stored in the file.
+- 2026-09-07: added `test:watch` and `test:coverage` scripts. First coverage
+  run: 78.89% lines, 79.01% branches, 83.33% functions overall, with
+  `mailbox.mjs` and `server.mjs` at 100% lines. The low files are `setup.mjs`
+  (31.68%) and `cli.mjs` (45.16%), which is the interactive-flow gap already
+  recorded below rather than a new finding.
+- 2026-09-07: noted that bare `node --test` reports 19 tests where the suite
+  has 18. Node auto-discovers every file under `test/`, so the helper
+  `test/imap-fixture.mjs` is counted as an empty test file. All entry points
+  use the explicit `test/*.test.mjs` glob, and the VS Code test settings
+  exclude the helper.
+
 ## Known gaps
 
 Recorded rather than glossed over:

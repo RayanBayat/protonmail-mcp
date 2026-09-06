@@ -9,16 +9,36 @@
     "type": "git",
     "url": "git+https://github.com/RayanBayat/protonmail-mcp.git"
   },
-  "keywords": ["mcp", "modelcontextprotocol", "protonmail", "proton", "imap", "read-only"],
-  "engines": { "node": ">=22" },
-  "bin": { "protonmail-mcp": "src/cli.mjs" },
-  "files": ["src", "skills", "README.md", "SECURITY.md", "LICENSE"],
+  "keywords": [
+    "mcp",
+    "modelcontextprotocol",
+    "protonmail",
+    "proton",
+    "imap",
+    "read-only"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "protonmail-mcp": "src/cli.mjs"
+  },
+  "files": [
+    "src",
+    "skills",
+    "README.md",
+    "SECURITY.md",
+    "LICENSE"
+  ],
   "packageManager": "pnpm@10.20.0",
   "scripts": {
     "start": "node src/cli.mjs serve",
     "setup": "node src/cli.mjs setup",
     "doctor": "node src/cli.mjs doctor",
-    "test": "node --test test/*.test.mjs"
+    "test": "node --test test/*.test.mjs",
+    "test:watch": "node --test --watch test/*.test.mjs",
+    "test:coverage": "node --test --experimental-test-coverage test/*.test.mjs",
+    "test:file": "node --test"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.30.0",

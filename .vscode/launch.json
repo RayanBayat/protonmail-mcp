@@ -1,0 +1,104 @@
+{
+  "version": "0.2.0",
+  "inputs": [
+    {
+      "id": "vaultPassphrase",
+      "type": "promptString",
+      "description": "Vault passphrase (the one you chose during setup)",
+      "password": true
+    }
+  ],
+  "configurations": [
+    {
+      "name": "Tests: all",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "runtimeArgs": ["--test", "test/*.test.mjs"],
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"],
+      // The MCP end-to-end test spawns src/cli.mjs as a real subprocess.
+      // Without this, breakpoints inside the server would never be hit.
+      "autoAttachChildProcesses": true
+    },
+    {
+      "name": "Tests: current file",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "runtimeArgs": ["--test", "${relativeFile}"],
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"],
+      "autoAttachChildProcesses": true
+    },
+    {
+      "name": "Tests: with coverage",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "runtimeArgs": ["--test", "--experimental-test-coverage", "test/*.test.mjs"],
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "CLI: setup",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "program": "${workspaceFolder}/src/cli.mjs",
+      "args": ["setup"],
+      // setup refuses to run without a TTY, and hides the password prompts.
+      // The integrated terminal is a real TTY; the Debug Console is not.
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "CLI: doctor",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "program": "${workspaceFolder}/src/cli.mjs",
+      "args": ["doctor"],
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "CLI: config",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "program": "${workspaceFolder}/src/cli.mjs",
+      "args": ["config"],
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "CLI: serve (prompts for passphrase)",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "program": "${workspaceFolder}/src/cli.mjs",
+      "args": ["serve"],
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"],
+      // VS Code holds this for the debug session only; it is never written to
+      // disk. serve reads the passphrase from the environment and never prompts.
+      // Note that stdout is MCP JSON-RPC, so this is only useful when you drive
+      // it by hand or from a client - otherwise use "Attach" below.
+      "env": {
+        "PROTONMAIL_MCP_PASSPHRASE": "${input:vaultPassphrase}"
+      }
+    },
+    {
+      "name": "Attach: running server (--inspect 9229)",
+      "type": "node",
+      "request": "attach",
+      "port": 9229,
+      "restart": true,
+      "skipFiles": ["<node_internals>/**"],
+      "localRoot": "${workspaceFolder}",
+      "remoteRoot": "${workspaceFolder}"
+    }
+  ],
+  "compounds": []
+}
