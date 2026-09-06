@@ -37,7 +37,7 @@ Acceptance criteria:
 - AC06: automated unit, local TLS IMAP integration, and MCP subprocess tests;
   a CI matrix runs the same suite on Windows, macOS, and Linux.
 - AC07: default-deny writes, bounded input/output, TLS certificate validation,
-  localhost-only IMAP connections, generic errors, and no persistent mail cache.
+  localhost-only IMAP connections, generic errors, and a bounded local SQLite read cache.
 - AC08: a portable skill folder can be imported, documents its MCP dependency,
   and distinguishes untrusted email contents from user instructions.
 - AC09: a local real-Bridge test is recorded separately from simulated tests.
@@ -53,9 +53,9 @@ repository top level, and the Go sources, Makefile, Homebrew formula,
 macOS packaging scripts, Go CI workflows, and Go-specific documentation were
 removed on 2026-09-06. Git history preserves them at `7b23913`, and
 SECURITY-REVIEW.md records the findings that motivated the rewrite. Two
-upstream capabilities are deliberately not replaced: the local SQLite mirror
-(no cache is kept) and the write-gating policy/audit/Touch ID layer (there are
-no write operations to gate).
+upstream capabilities are deliberately not replaced: the full SQLite mirror
+(a bounded on-demand read cache is used instead) and the write-gating
+policy/audit/Touch ID layer (there are no write operations to gate).
 
 Bridge handles Proton account login, token rotation, and decryption; our code
 speaks standard IMAP to its loopback endpoint. This reduces new
@@ -138,7 +138,7 @@ Limit search pages to 50 results, folder lists to 200, and tool concurrency to 2
 
 ## 4. Technology and layout
 
-Node.js >=22, JavaScript ES modules, official MCP SDK, ImapFlow, MailParser,
+Node.js >=22.13.0, JavaScript ES modules, built-in SQLite, official MCP SDK, ImapFlow, MailParser,
 html-to-text, Zod. Pin dependencies to exact versions and commit the lockfile;
 install with scripts disabled.
 Use the Node built-in test runner. No Python is planned; if needed use `uv`.

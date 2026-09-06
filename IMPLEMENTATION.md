@@ -3,6 +3,22 @@
 This ledger tracks [SPEC.md](SPEC.md). Checkboxes mean completed work with
 evidence, not planned work. Update as implementation and validation proceed.
 
+## Local SQLite cache (2026-09-07)
+
+`serve` now initializes a local `mail-cache.sqlite` automatically and persists
+bounded `mailbox_read` responses. Cached reads still validate against Bridge;
+searches remain live. The cache is unencrypted, limited to 1,000 messages and
+30-day expiry, and can be cleared with `cache-clear`. This supersedes the
+original no-persistent-cache decision. The runtime minimum is Node 22.13.0
+for built-in SQLite without a command-line flag.
+
+Validation: Windows, Node 26.8.1, local TLS IMAP fixtures and the production
+MCP subprocess. Tests cover persistence across instances, skipping repeat body
+downloads, account/folder/UID-validity isolation, deletion, oversize rejection,
+expiration, eviction, local clearing and sanitized errors. No real mailbox
+was read to test this change; live Bridge performance and other OS runs remain
+unverified for this feature.
+
 ## Release readiness
 
 - [x] Move the package to the repository root and remove the legacy runtime
