@@ -10,12 +10,12 @@ evidence, not planned work. Update as implementation and validation proceed.
 | AC01 public fork and attribution | Complete | `RayanBayat/protonmail-mcp`, public, fork of `just-an-oldsalt/proto-mcp`; upstream history retained; GPL LICENSE unchanged; attribution in README |
 | AC02 spec and tracker first | Complete | SPEC.md and this file, created before portable implementation |
 | AC03 portable implementation | Complete | Node-only runtime; Go/macOS sources removed. The same suite passes on all three OSes against Node 22 and 24 in CI, and on Windows locally under Node 25.8 |
-| AC04 setup/doctor/config | Partly verified | `setup`/`doctor`/`config`/`serve`/`launch` implemented in `src/cli.mjs`; `saveVault` + `clientConfig` covered by `test/setup.test.mjs`. Interactive prompts and `launch` not automatically tested — they need a TTY and a live Bridge |
+| AC04 setup/doctor/config | Complete | `setup`, `doctor` and `config` exercised by hand against real Bridge on Windows on 2026-09-06; `saveVault` + `clientConfig` covered by `test/setup.test.mjs`. `launch` still unexercised, and the interactive prompts have no automated coverage |
 | AC05 four read-only MCP tools | Complete | `test/mcp.test.mjs`: real subprocess, official SDK client, initialize, list-tools, all four tools, invalid args and unknown tool rejected |
 | AC06 OS tests | Complete | Run 34050271822: all 7 jobs green - 14 tests on ubuntu-latest, windows-latest and macos-latest against Node 22 and 24, plus the dependency audit and packaged-file check |
 | AC07 security boundaries | Complete | `test/mailbox.test.mjs` asserts EXAMINE/BODY.PEEK, absence of mutating commands, certificate-mismatch rejection, credential-free errors, 2 MiB refusal before download, stale-ID and cursor binding; `test/config.test.mjs` loopback/TLS-only |
 | AC08 importable skill | Complete | `mailbox-mcp/skills/protonmail/SKILL.md`, validated by `test/skill.test.mjs` (frontmatter, four tools, untrusted-data framing, no machine-local state) |
-| AC09 live Bridge verification | Blocked on user setup | Bridge installed; no credentials accessed. Nothing in this ledger is evidence of real mailbox connectivity |
+| AC09 live Bridge verification | Complete | 2026-09-06: `doctor` against live Bridge v3.22.0 returned "Connected to Proton Bridge over verified TLS. Read-only access works (19 folders)." Certificate, login and folder listing verified; no message was read |
 
 ## Task ledger
 
@@ -32,7 +32,7 @@ evidence, not planned work. Update as implementation and validation proceed.
 - [x] T10 Add OS matrix; run suite and dependency audit on all three OSes.
       An independent security review of this Node code is still outstanding.
 - [x] T11 Push to the public fork; verify GitHub metadata and CI outcomes.
-- [ ] T12 Exercise real Bridge with locally entered credentials.
+- [x] T12 Exercise real Bridge with locally entered credentials.
 
 ## Evidence log
 
@@ -82,14 +82,32 @@ evidence, not planned work. Update as implementation and validation proceed.
   TLS, and a server that stops advertising STARTTLS is asserted to fail
   without sending credentials. Suite is 14 tests.
 
+- 2026-09-06: live Bridge verification on Windows 11, Bridge v3.22.0 listening
+  on 127.0.0.1:1143. The user exported Bridge's TLS certificate (self-signed,
+  `C=CH O=Proton AG OU=Proton Mail CN=127.0.0.1`, SAN `IP:127.0.0.1`, SHA-256
+  `3F:62:6E:C7:...:2E:84`), confirmed the fingerprint at the prompt, and
+  completed `setup` in a real terminal. `doctor` then reported: "Connected to
+  Proton Bridge over verified TLS. Read-only access works (19 folders)."
+  This exercised certificate validation, STARTTLS, Bridge authentication and a
+  read-only folder listing against a real mailbox. No message was fetched, and
+  no credential or passphrase was visible to the assistant at any point.
+- 2026-09-06: `setup` correctly refused to run under a non-TTY stdin when
+  invoked through the agent, forcing credential entry into a real terminal.
+  Behaved as designed rather than degrading to an echoing prompt.
+
 ## Known gaps
 
 Recorded rather than glossed over:
 
 - The interactive `setup` and `launch` flows have no automated coverage;
-  a TTY-driven regression could slip through the suite.
-- Integration tests use a hand-written IMAP fixture. It approximates Bridge;
-  it does not prove Bridge compatibility. Only T12 can do that.
+  a TTY-driven regression could slip through the suite. `setup` and `doctor`
+  have now been run by hand against real Bridge; `launch` has not.
+- The live check covered connection, auth and folder listing only. No
+  `mailbox_search` or `mailbox_read` has run against a real mailbox, so MIME
+  handling and search pagination remain fixture-verified only.
+- Integration tests use a hand-written IMAP fixture. It approximates Bridge
+  well enough that connection, auth and folder listing worked against the real
+  thing on the first attempt, but it is still not proof of Bridge behaviour.
 - No independent security review of this Node implementation has been done.
   SECURITY-REVIEW.md reviews the *upstream* Go code, not this code.
 
