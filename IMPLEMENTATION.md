@@ -14,7 +14,7 @@ evidence, not planned work. Update as implementation and validation proceed.
 | AC05 four read-only MCP tools | Complete | `test/mcp.test.mjs`: real subprocess, official SDK client, initialize, list-tools, all four tools, invalid args and unknown tool rejected |
 | AC06 OS tests | Complete | Run 34050271822: all 7 jobs green - 14 tests on ubuntu-latest, windows-latest and macos-latest against Node 22 and 24, plus the dependency audit and packaged-file check |
 | AC07 security boundaries | Complete | `test/mailbox.test.mjs` asserts EXAMINE/BODY.PEEK, absence of mutating commands, certificate-mismatch rejection, credential-free errors, 2 MiB refusal before download, stale-ID and cursor binding; `test/config.test.mjs` loopback/TLS-only |
-| AC08 importable skill | Complete | `mailbox-mcp/skills/protonmail/SKILL.md`, validated by `test/skill.test.mjs` (frontmatter, four tools, untrusted-data framing, no machine-local state) |
+| AC08 importable skill | Complete | `skills/protonmail/SKILL.md`, validated by `test/skill.test.mjs` (frontmatter, four tools, untrusted-data framing, no machine-local state) |
 | AC09 live Bridge verification | Complete | 2026-09-06: `doctor` against live Bridge v3.22.0 returned "Connected to Proton Bridge over verified TLS. Read-only access works (19 folders)." Certificate, login and folder listing verified; no message was read |
 
 ## Task ledger
@@ -106,6 +106,23 @@ evidence, not planned work. Update as implementation and validation proceed.
   `html-to-text` pinned to 10.0.1, the version mailparser already resolves.
   Covered by `test/body.test.mjs` (4 tests); suite is 18.
 
+- 2026-09-06: repository restructured for one-command install. The package
+  moved from `mailbox-mcp/` to the repository root, because npm cannot install
+  from a subdirectory of a git repository. Added a `bin` entry, a `files`
+  allowlist, and repository metadata. Verified by packing the tarball (11
+  files, no vault/certificate/config), installing it into a clean project, and
+  running `protonmail-mcp --help` from `node_modules/.bin`. CI gained an
+  `install` job that runs `npm install -g .` and the binary on all three OSes,
+  so broken install instructions fail the build.
+- 2026-09-06: switched development and CI to pnpm 10.20.0, pinned via
+  `packageManager`. `pnpm-lock.yaml` replaces `package-lock.json`. The suite
+  passes under pnpm's non-hoisted layout, which confirms no module relies on an
+  undeclared transitive dependency. `pnpm audit --prod` reports no known
+  vulnerabilities. Note the boundary honestly: npm ignores a dependency's
+  lockfile when installing from git, so the lockfile binds development and CI
+  only. End-user installs are pinned by the exact versions in `package.json`,
+  and their transitive set is resolved fresh.
+
 ## Known gaps
 
 Recorded rather than glossed over:
@@ -118,6 +135,8 @@ Recorded rather than glossed over:
   covered by unit tests but has not been re-confirmed against real mail.
 - The IMAP fixture models plain-text mail only. Real mailboxes are mostly
   multipart/alternative, which is why the blank-body defect survived CI.
+- End-user installs resolve transitive dependencies fresh rather than from
+  `pnpm-lock.yaml`; only direct dependencies are version-pinned for them.
 - Integration tests use a hand-written IMAP fixture. It approximates Bridge
   well enough that connection, auth and folder listing worked against the real
   thing on the first attempt, but it is still not proof of Bridge behaviour.

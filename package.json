@@ -1,0 +1,30 @@
+{
+  "name": "protonmail-mcp",
+  "version": "0.1.0",
+  "description": "Read-only Proton Mail MCP server for Windows, macOS and Linux via Proton Mail Bridge",
+  "license": "GPL-3.0-only",
+  "type": "module",
+  "homepage": "https://github.com/RayanBayat/protonmail-mcp",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RayanBayat/protonmail-mcp.git"
+  },
+  "keywords": ["mcp", "modelcontextprotocol", "protonmail", "proton", "imap", "read-only"],
+  "engines": { "node": ">=22" },
+  "bin": { "protonmail-mcp": "src/cli.mjs" },
+  "files": ["src", "skills", "README.md", "SECURITY.md", "LICENSE"],
+  "packageManager": "pnpm@10.20.0",
+  "scripts": {
+    "start": "node src/cli.mjs serve",
+    "setup": "node src/cli.mjs setup",
+    "doctor": "node src/cli.mjs doctor",
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "html-to-text": "10.0.1",
+    "imapflow": "1.7.8",
+    "mailparser": "3.9.22",
+    "zod": "4.5.4"
+  }
+}

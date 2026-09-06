@@ -9,9 +9,8 @@ on:
 permissions:
   contents: read
 
-defaults:
-  run:
-    working-directory: mailbox-mcp
+env:
+  PNPM_VERSION: 10.20.0
 
 jobs:
   test:
@@ -28,15 +27,17 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node }}
-          cache: npm
-          cache-dependency-path: mailbox-mcp/package-lock.json
-      # Third-party install scripts must never run against this dependency set.
-      - run: npm ci --ignore-scripts
+      # Installed directly rather than via a third-party action, so the
+      # version is pinned and no extra supply-chain surface is added.
+      - run: npm install --global pnpm@${{ env.PNPM_VERSION }}
+      # A lockfile that does not match package.json fails here rather than
+      # resolving to something different from what was reviewed.
+      - run: pnpm install --frozen-lockfile
       # Diagnostic only: Windows runners ship openssl outside PATH and the test
       # fixture falls back to the Git for Windows copy.
       - run: openssl version
         continue-on-error: true
-      - run: npm test
+      - run: pnpm test
 
   audit:
     name: audit
@@ -47,10 +48,9 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: '22'
-          cache: npm
-          cache-dependency-path: mailbox-mcp/package-lock.json
-      - run: npm ci --ignore-scripts
-      - run: npm audit --omit=dev --audit-level=high
+      - run: npm install --global pnpm@${{ env.PNPM_VERSION }}
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm audit --prod --audit-level high
       # The published package must not carry a vault, certificate or local config.
       - name: check packaged files
         run: |
@@ -63,3 +63,21 @@ jobs:
             if (leaked.length) { console.error("Refusing to package:", leaked); process.exit(1); }
             console.log(`${pack.files.length} files packaged, none sensitive.`);
           '
+
+  install:
+    name: install from a clean checkout
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      # What the README tells a user to run. If this breaks, the install
+      # instructions are wrong, which no unit test would catch.
+      - run: npm install --global --ignore-scripts .
+      - run: protonmail-mcp --help

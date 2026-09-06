@@ -1,5 +1,6 @@
-# Dependencies and local caches
+# Dependencies and package-manager state
 node_modules/
+.pnpm-store/
 .npm-cache/
 
 # Local credentials, certificates and configuration — never commit these.
@@ -24,3 +25,6 @@ test-output/
 .idea/
 .vscode/
 *.swp
+
+# Superseded npm lockfile — pnpm-lock.yaml is the source of truth.
+package-lock.json

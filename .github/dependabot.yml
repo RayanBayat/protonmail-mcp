@@ -1,10 +1,11 @@
 version: 2
 
-# The runtime is a single pinned npm dependency set (mailbox-mcp/). Grouping
-# weekly keeps review noise low while still surfacing security updates.
+# A single pinned dependency set at the repository root, locked by
+# pnpm-lock.yaml. Grouping weekly keeps review noise low while still
+# surfacing security updates.
 updates:
   - package-ecosystem: npm
-    directory: "/mailbox-mcp"
+    directory: "/"
     schedule:
       interval: weekly
       day: monday

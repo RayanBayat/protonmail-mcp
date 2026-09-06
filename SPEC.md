@@ -48,8 +48,8 @@ Acceptance criteria:
 ### AD01: use Proton's official Bridge rather than porting private API login
 
 The original Go implementation has hard macOS dependencies and impersonates
-Proton Bridge's client version. Node becomes the only runtime: `mailbox-mcp/`
-is the sole entry point, and the Go sources, Makefile, Homebrew formula,
+Proton Bridge's client version. Node becomes the only runtime, rooted at the
+repository top level, and the Go sources, Makefile, Homebrew formula,
 macOS packaging scripts, Go CI workflows, and Go-specific documentation were
 removed on 2026-09-06. Git history preserves them at `7b23913`, and
 SECURITY-REVIEW.md records the findings that motivated the rewrite. Two
@@ -139,33 +139,44 @@ Limit search pages to 50 results, folder lists to 200, and tool concurrency to 2
 ## 4. Technology and layout
 
 Node.js >=22, JavaScript ES modules, official MCP SDK, ImapFlow, MailParser,
-Zod. Pin dependencies and commit the npm lockfile; install with scripts disabled.
+html-to-text, Zod. Pin dependencies to exact versions and commit the lockfile;
+install with scripts disabled.
 Use the Node built-in test runner. No Python is planned; if needed use `uv`.
 
 ```text
-README.md                       setup, tools, privacy, attribution
+README.md                       step-by-step install, tools, privacy, attribution
 SECURITY.md                     boundaries, residual risks, reporting
 SPEC.md                         detailed specification and decisions
 IMPLEMENTATION.md               requirements, task progress, test evidence
 SECURITY-REVIEW.md              upstream review findings and limitations
-mailbox-mcp/package.json        portable runtime/dependency/test commands
-mailbox-mcp/src/                config, vault, IMAP service, MCP, CLI/setup
-mailbox-mcp/test/               unit tests and local protocol fixtures
-mailbox-mcp/skills/protonmail/   importable SKILL.md and metadata
-.github/workflows/mailbox.yml   OS test matrix and dependency audit
+package.json                    runtime, bin entry, dependencies, test commands
+pnpm-lock.yaml                  the lockfile of record for development and CI
+src/                            config, vault, IMAP service, MCP, CLI/setup
+test/                           unit tests and local protocol fixtures
+skills/protonmail/              importable SKILL.md and metadata
+.github/workflows/mailbox.yml   OS test matrix, dependency audit, install check
 ```
+
+The package lives at the repository root rather than in a subdirectory, because
+npm cannot install a package from a subdirectory of a git repository and a
+one-command install is a requirement. pnpm is the development and CI package
+manager: its non-hoisted layout makes an undeclared transitive dependency fail
+locally instead of in a user's install. End users need only npm, which resolves
+the exact versions pinned in `package.json`; a dependency's lockfile is ignored
+by npm when installing from git, so `pnpm-lock.yaml` binds development and CI
+only. Publishing to npm remains out of scope.
 
 Commands (use `npm.cmd` on PowerShell where script policy blocks npm.ps1):
 
 ```sh
-cd mailbox-mcp
-npm ci --ignore-scripts
-npm test
-npm audit --omit=dev
-node src/cli.mjs setup
-node src/cli.mjs doctor
-node src/cli.mjs config
-node src/cli.mjs serve
+npm install -g github:RayanBayat/protonmail-mcp   # end users
+pnpm install --frozen-lockfile                    # development
+pnpm test
+pnpm audit --prod
+protonmail-mcp setup
+protonmail-mcp doctor
+protonmail-mcp config
+protonmail-mcp serve
 ```
 
 Use small named functions and explicit imports. Keep OS path selection separate
@@ -184,8 +195,8 @@ try {
 
 1. **Specification and traceability**: write this file and the task ledger;
    record upstream review and GitHub authentication status.
-2. **Portable foundation**: migrate the uncommitted Windows prototype into
-   `mailbox-mcp`, implement platform paths, validated config, encrypted vault,
+2. **Portable foundation**: migrate the uncommitted Windows prototype,
+   implement platform paths, validated config, encrypted vault,
    and identifier/cursor boundaries. Verify negative and round-trip tests.
 3. **Read-only mailbox operations**: establish authenticated TLS, folders,
    bounded search/read, stale-ID checks, and cancellation/timeouts. Test against
