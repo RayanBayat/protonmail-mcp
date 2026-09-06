@@ -123,6 +123,16 @@ evidence, not planned work. Update as implementation and validation proceed.
   only. End-user installs are pinned by the exact versions in `package.json`,
   and their transitive set is resolved fresh.
 
+- 2026-09-06: CI run 34060791550 green on all 10 jobs - 18 tests on three OSes
+  against Node 22 and 24, the pnpm audit, the packaged-file check, and a fresh
+  global install plus `protonmail-mcp --help` on ubuntu, windows and macOS.
+  The install job earned its place immediately: its first run failed with
+  ERR_MODULE_NOT_FOUND because `npm install -g .` symlinks the checkout, so
+  Node resolved imports from a tree with no node_modules. Packing first, as
+  `npm install -g github:...` does internally, fixed it. That was a defect in
+  the check rather than in the package, but it is exactly the class of breakage
+  no unit test would catch.
+
 ## Known gaps
 
 Recorded rather than glossed over:
