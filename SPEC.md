@@ -48,11 +48,19 @@ Acceptance criteria:
 ### AD01: use Proton's official Bridge rather than porting private API login
 
 The original Go implementation has hard macOS dependencies and impersonates
-Proton Bridge's client version. The fork retains that historical source for
-reference, but the supported entry point becomes `mailbox-mcp/`. Bridge handles
-Proton account login, token rotation, and decryption; our code speaks standard
-IMAP to its loopback endpoint. This reduces new credential-handling code and
-avoids carrying the upstream draft/send security issues into the new runtime.
+Proton Bridge's client version. Node becomes the only runtime: `mailbox-mcp/`
+is the sole entry point, and the Go sources, Makefile, Homebrew formula,
+macOS packaging scripts, Go CI workflows, and Go-specific documentation were
+removed on 2026-09-06. Git history preserves them at `7b23913`, and
+SECURITY-REVIEW.md records the findings that motivated the rewrite. Two
+upstream capabilities are deliberately not replaced: the local SQLite mirror
+(no cache is kept) and the write-gating policy/audit/Touch ID layer (there are
+no write operations to gate).
+
+Bridge handles Proton account login, token rotation, and decryption; our code
+speaks standard IMAP to its loopback endpoint. This reduces new
+credential-handling code and avoids carrying the upstream draft/send security
+issues into the new runtime.
 
 ### AD02: stdio MCP, no server listening port
 
@@ -131,6 +139,8 @@ Zod. Pin dependencies and commit the npm lockfile; install with scripts disabled
 Use the Node built-in test runner. No Python is planned; if needed use `uv`.
 
 ```text
+README.md                       setup, tools, privacy, attribution
+SECURITY.md                     boundaries, residual risks, reporting
 SPEC.md                         detailed specification and decisions
 IMPLEMENTATION.md               requirements, task progress, test evidence
 SECURITY-REVIEW.md              upstream review findings and limitations
@@ -216,8 +226,9 @@ publication approval is needed under this session's explicit instruction.
 Never commit credentials, private mailbox content, machine-local paths in
 generated personal configs, dependency directories, or encrypted user vaults.
 Never ask for the Proton password or vault passphrase in chat. Never send mail
-as a test. Do not silently enable the legacy Go runtime in the cross-platform
-installer. Same-user malware and host/provider retention are residual risks.
+as a test. Do not reintroduce a write tool without first rebuilding an approval
+and audit layer. Same-user malware and host/provider retention are residual
+risks.
 
 Outstanding external requirements: authenticated GitHub account, Proton Bridge
 account setup, and live test credentials entered locally by the user.
