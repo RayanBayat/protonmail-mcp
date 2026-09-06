@@ -72,12 +72,19 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: '22'
-      # What the README tells a user to run. If this breaks, the install
-      # instructions are wrong, which no unit test would catch.
-      - run: npm install --global --ignore-scripts .
+      # Approximates `npm install -g github:...`, which packs the repository
+      # and installs the tarball. Installing the directory directly would
+      # symlink the checkout instead, so cli.mjs would resolve its imports
+      # against a tree with no node_modules and fail for the wrong reason.
+      # If this job breaks, the README's install instructions are wrong -
+      # something no unit test would catch.
+      - run: npm install --global --ignore-scripts "$(npm pack --silent)"
       - run: protonmail-mcp --help
