@@ -1,6 +1,7 @@
 import { X509Certificate, createHash } from 'node:crypto';
 import { ImapFlow } from 'imapflow';
 import { simpleParser } from 'mailparser';
+import { htmlToText } from 'html-to-text';
 import { z } from 'zod';
 import { MailboxError, validateConfig, encodeMessageId, decodeMessageId, loadConnection } from './config.mjs';
 
@@ -10,6 +11,7 @@ export const searchSchema = z.object({ folder: field.min(1).default('INBOX'),
   limit: z.number().int().min(1).max(50).default(20), cursor: z.string().max(4096).optional() }).strict();
 export const readSchema = z.object({ message_id: z.string().min(1).max(4096) }).strict();
 const MAX_RAW = 2 * 1024 * 1024;
+const MAX_HTML = 1024 * 1024;
 const WINDOW = 5000;
 
 function parse(schema, value) {
@@ -27,6 +29,24 @@ function addresses(list) {
 function date(value) { return value instanceof Date && Number.isFinite(value.getTime()) ? value.toISOString() : null; }
 function queryHash(input) {
   return createHash('sha256').update(JSON.stringify([input.folder, input.text, input.from, input.subject, input.unread])).digest('hex');
+}
+
+// Inside a multipart/alternative, mailparser treats the text/plain sibling as
+// the text representation and never converts the HTML (mail-parser.js ~807).
+// Marketing and receipt mail routinely ships an empty text/plain part, which
+// would otherwise read as a blank message. Anchors keep their href so a
+// disguised phishing destination stays visible; images are dropped because
+// they are layout and tracking pixels, and attachments are reported separately.
+export function extractBody(mail) {
+  if (mail?.text?.trim()) return { text: mail.text, source: 'plain' };
+  const html = typeof mail?.html === 'string' ? mail.html : '';
+  if (html && html.length <= MAX_HTML) {
+    try {
+      const converted = htmlToText(html, { wordwrap: false, selectors: [{ selector: 'img', format: 'skip' }] });
+      if (converted.trim()) return { text: converted, source: 'html' };
+    } catch { /* fall through: a body we cannot parse is reported as empty */ }
+  }
+  return { text: mail?.text || '', source: html ? 'html_unavailable' : 'empty' };
 }
 
 export function connectionOptions(connection) {
@@ -142,9 +162,10 @@ export class MailboxService {
         if (!row?.source) throw new MailboxError('Message no longer exists. Search again.');
         if (row.source.length > MAX_RAW) throw new MailboxError('Message exceeds the 2 MiB read limit. Open it in Proton Mail.');
         const mail = await simpleParser(row.source, { skipHtmlToText: false, skipTextToHtml: true, skipImageLinks: true, maxHtmlLengthToParse: MAX_RAW });
+        const body = extractBody(mail);
         return { untrusted: true, message_id: input.message_id, subject: clean(mail.subject),
           from: addresses(mail.from?.value), to: addresses(mail.to?.value), date: date(mail.date),
-          text: clean(mail.text, 20000), truncated: (mail.text?.length || 0) > 20000,
+          text: clean(body.text, 20000), text_source: body.source, truncated: body.text.length > 20000,
           attachments: mail.attachments.slice(0, 50).map(a => ({ filename: clean(a.filename), content_type: clean(a.contentType), size_bytes: a.size })),
           attachments_truncated: mail.attachments.length > 50 };
       } finally { lock.release(); }

@@ -98,7 +98,11 @@ or production work. Test fixtures use their own ephemeral certificates.
 ### AD05: read-only means no IMAP mutation
 
 Use EXAMINE instead of SELECT, and BODY.PEEK for reads. No tool accepts raw IMAP
-commands or exposes write functionality. Validate inputs with Zod, cap pages
+commands or exposes write functionality. When a message carries no usable
+text/plain part, convert its HTML to text locally rather than returning a blank
+body; keep anchor destinations visible so a disguised link cannot hide, and drop
+images, which are layout and tracking pixels. Report which part the text came
+from. Never execute scripts or fetch remote content while doing so. Validate inputs with Zod, cap pages
 and body size, preserve UIDVALIDITY in message references, and refuse stale
 references. Extract text from MIME without executing HTML or fetching links.
 Attachments are listed as metadata only. Label every mail-derived result as
@@ -122,7 +126,7 @@ an actionable, sanitized explanation. No raw server responses are returned.
 | `mailbox_status` | none | configuration/connectivity and read-only status |
 | `mailbox_folders` | none | bounded selectable folder paths |
 | `mailbox_search` | folder (INBOX default), text/from/subject/unread filters, limit 1..50, optional cursor | message summaries and continuation cursor |
-| `mailbox_read` | opaque message_id | subject/from/to/date, bounded plain text, attachment metadata, truncation indicator |
+| `mailbox_read` | opaque message_id | subject/from/to/date, bounded plain text, its source, attachment metadata, truncation indicator |
 
 Message IDs encode folder, UIDVALIDITY, UID; they grant no additional access.
 Search examines bounded descending UID windows, reporting a continuation even

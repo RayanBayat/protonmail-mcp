@@ -95,6 +95,17 @@ evidence, not planned work. Update as implementation and validation proceed.
   invoked through the agent, forcing credential entry into a real terminal.
   Behaved as designed rather than degrading to an echoing prompt.
 
+- 2026-09-06: first real-mailbox use surfaced a defect the fixture missed.
+  HTML-only mail returned a blank body. Root cause was not "the server only
+  returns text/plain": inside a multipart/alternative, mailparser treats the
+  text/plain sibling as the text representation and never converts the HTML
+  (`mail-parser.js` ~807), so an empty sibling yields an empty body while the
+  HTML is discarded. Marketing and receipt mail routinely ships exactly that.
+  Fixed by converting the HTML locally when no usable plain part exists, with
+  anchor destinations preserved and images skipped, plus a `text_source` field.
+  `html-to-text` pinned to 10.0.1, the version mailparser already resolves.
+  Covered by `test/body.test.mjs` (4 tests); suite is 18.
+
 ## Known gaps
 
 Recorded rather than glossed over:
@@ -102,9 +113,11 @@ Recorded rather than glossed over:
 - The interactive `setup` and `launch` flows have no automated coverage;
   a TTY-driven regression could slip through the suite. `setup` and `doctor`
   have now been run by hand against real Bridge; `launch` has not.
-- The live check covered connection, auth and folder listing only. No
-  `mailbox_search` or `mailbox_read` has run against a real mailbox, so MIME
-  handling and search pagination remain fixture-verified only.
+- `mailbox_search` and `mailbox_read` have now run against a real mailbox via
+  an MCP host, which is what surfaced the HTML-body defect. The fix itself is
+  covered by unit tests but has not been re-confirmed against real mail.
+- The IMAP fixture models plain-text mail only. Real mailboxes are mostly
+  multipart/alternative, which is why the blank-body defect survived CI.
 - Integration tests use a hand-written IMAP fixture. It approximates Bridge
   well enough that connection, auth and folder listing worked against the real
   thing on the first attempt, but it is still not proof of Bridge behaviour.

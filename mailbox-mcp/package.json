@@ -5,7 +5,9 @@
   "description": "Read-only Proton Mail MCP for Windows, macOS and Linux via Proton Mail Bridge",
   "license": "GPL-3.0-only",
   "type": "module",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "start": "node src/cli.mjs serve",
     "doctor": "node src/cli.mjs doctor",
@@ -13,6 +15,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.30.0",
+    "html-to-text": "10.0.1",
     "imapflow": "1.7.8",
     "mailparser": "3.9.22",
     "zod": "4.5.4"
