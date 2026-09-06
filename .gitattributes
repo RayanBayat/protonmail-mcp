@@ -1,0 +1,7 @@
+# Keep the repository's text files LF in git and in the working tree, so a
+# Windows checkout produces the same bytes as a Linux or macOS one. Frontmatter
+# parsers, shell scripts and diffs all depend on this.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.ico binary

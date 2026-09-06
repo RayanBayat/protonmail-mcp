@@ -1,0 +1,90 @@
+name: mailbox
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PNPM_VERSION: 10.20.0
+
+jobs:
+  test:
+    name: test (${{ matrix.os }}, node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node: ['22', '24']
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+      # Installed directly rather than via a third-party action, so the
+      # version is pinned and no extra supply-chain surface is added.
+      - run: npm install --global pnpm@${{ env.PNPM_VERSION }}
+      # A lockfile that does not match package.json fails here rather than
+      # resolving to something different from what was reviewed.
+      - run: pnpm install --frozen-lockfile
+      # Diagnostic only: Windows runners ship openssl outside PATH and the test
+      # fixture falls back to the Git for Windows copy.
+      - run: openssl version
+        continue-on-error: true
+      - run: pnpm test
+
+  audit:
+    name: audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - run: npm install --global pnpm@${{ env.PNPM_VERSION }}
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm audit --prod --audit-level high
+      # The published package must not carry a vault, certificate or local config.
+      - name: check packaged files
+        run: |
+          npm pack --dry-run --json > /tmp/pack.json
+          node --input-type=module -e '
+            import { readFile } from "node:fs/promises";
+            const [pack] = JSON.parse(await readFile("/tmp/pack.json", "utf8"));
+            const leaked = pack.files.map(f => f.path).filter(p =>
+              /(^|\/)(vault\.json|config\.json|node_modules\/)|\.(pem|crt|key|p12)$/.test(p));
+            if (leaked.length) { console.error("Refusing to package:", leaked); process.exit(1); }
+            console.log(`${pack.files.length} files packaged, none sensitive.`);
+          '
+
+  install:
+    name: install from a clean checkout
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      # Approximates `npm install -g github:...`, which packs the repository
+      # and installs the tarball. Installing the directory directly would
+      # symlink the checkout instead, so cli.mjs would resolve its imports
+      # against a tree with no node_modules and fail for the wrong reason.
+      # If this job breaks, the README's install instructions are wrong -
+      # something no unit test would catch.
+      - run: npm install --global --ignore-scripts "$(npm pack --silent)"
+      - run: protonmail-mcp --help

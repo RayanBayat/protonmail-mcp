@@ -1,35 +1,30 @@
-# Build output
-/bin/
-/dist/
-# scripts/build-app.sh assembles the D37 .app + entitlements here.
-/build/
+# Dependencies and package-manager state
+node_modules/
+.pnpm-store/
+.npm-cache/
 
-# Top-level built binaries (anchored so they don't match cmd/protonmcp/ etc.)
-/protonmcp
-/protonmcpd
-/protonmcp-shim
-/protonmcp-touchid
-# Phase 4/C — built by `make touchid`. Lives next to the source
-# under helpers/touchid/ but is a real binary product, not source.
-helpers/touchid/protonmcp-touchid
-# Phase 7/A — same shape for the screen-lock / sleep watcher
-# (`make lockwatch`). Compiled product, not source.
-helpers/lockwatch/protonmcp-lockwatch
-
-# Local config / data
-*.db
-*.db-wal
-*.db-shm
-*.log
+# Local credentials, certificates and configuration — never commit these.
+config.json
+vault.json
+vault.json.*
+*.pem
+*.crt
+*.key
+*.p12
 .env
 .env.*
 !.env.example
-# direnv — local signing / D37 build env (Developer ID, profile path).
-.envrc
+
+# Test and packaging output
+test-output/
+*.tgz
+*.log
 
 # Editor / OS
 .DS_Store
 .idea/
 .vscode/
 *.swp
-*.txt
+
+# Superseded npm lockfile — pnpm-lock.yaml is the source of truth.
+package-lock.json

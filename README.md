@@ -1,21 +1,16 @@
 <div align="center">
 
-# proto-mcp
+# ProtonMail MCP
 
-**Give Claude your inbox — without giving up control.**
+**Read your Proton mailbox from an AI host — on Windows, macOS or Linux.**
 
-A signed, notarized, Touch-ID-gated bridge between **Proton Mail** and
-**Claude**, running entirely on your Mac. Claude reads, searches,
-organizes, drafts, and sends your mail — and reads your calendar — through 34 [Model Context
-Protocol](https://modelcontextprotocol.io) tools — and every message
-that goes out needs your fingerprint on a prompt that names the real
-recipient.
+A local, read-only [Model Context Protocol](https://modelcontextprotocol.io)
+server that talks to [Proton Mail Bridge](https://proton.me/mail/bridge) over
+loopback TLS. Four tools: check status, list folders, search, read. Nothing
+sends, deletes, moves, or even marks a message read.
 
-Nothing leaves your laptop except the mail itself.
-
-![platform: macOS](https://img.shields.io/badge/platform-macOS%2013%2B-black?logo=apple)
-![Go 1.26.5+](https://img.shields.io/badge/Go-1.26.5%2B-00ADD8?logo=go&logoColor=white)
-![signed & notarized](https://img.shields.io/badge/Apple-signed%20%26%20notarized-success?logo=apple)
+![platform: Windows, macOS, Linux](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue)
+![Node 22+](https://img.shields.io/badge/Node.js-22%2B-339933?logo=node.js&logoColor=white)
 ![MCP](https://img.shields.io/badge/Model%20Context%20Protocol-ready-8A63D2)
 ![license: GPLv3](https://img.shields.io/badge/license-GPLv3-blue)
 
@@ -23,238 +18,260 @@ Nothing leaves your laptop except the mail itself.
 
 ---
 
-## What it feels like
-
-You talk to Claude. Claude talks to your mailbox. You stay in the loop on
-anything that matters.
+## What it does
 
 > *"What did I miss from the climbing group this week?"*
-> → Claude searches the local mirror, reads the thread, summarizes it. No prompt — reading is safe.
+> → Searches `INBOX`, reads the thread, summarizes it.
 
-> *"File all the newsletters under Reading and mark them read."*
-> → Claude moves and marks them. Organizing is gated, but quiet.
+> *"Draft a reply to Alice saying I'm in for Saturday."*
+> → Writes the reply in the conversation. You copy it into Proton Mail and
+> send it yourself. This server has no send tool.
 
-> *"Reply to Alice that I'm in for Saturday, and send it."*
-> → A Touch ID prompt appears: **To: alice@example.com · Subject: Re: gear list**. You tap. It sends. You didn't.
+Reading is the whole product. That is a deliberate boundary, not a milestone:
+there is no code path in this repository that mutates a mailbox.
 
-Every read is served from a local SQLite mirror, so it's fast and works
-offline. Every **write** is governed by a per-tool policy. Every **send**
-re-prompts, every time, showing the literal recipients — that fingerprint
-tap is the line between "Claude drafted it" and "Claude sent it."
+---
 
-## Quickstart
+# Installation
+
+Roughly 15 minutes of work, plus waiting for Bridge's first sync. Follow the
+steps in order — each depends on the one before it.
+
+## Step 0 — Check the prerequisites
+
+| Requirement | How to check | Notes |
+|---|---|---|
+| **Paid Proton plan** | Proton account settings | Bridge is **not** available on free plans. This is the one thing you cannot work around. |
+| **Node.js 22+** | `node --version` | Install from [nodejs.org](https://nodejs.org) if missing or older. |
+| **Proton Mail Bridge** | see Step 1 | Free download, but requires the paid plan above. |
+
+## Step 1 — Install and sign in to Proton Mail Bridge
+
+Bridge is Proton's official local IMAP gateway. It holds your session, rotates
+tokens, and does the decryption. This server never sees your Proton password.
+
+1. Download Bridge from [proton.me/mail/bridge](https://proton.me/mail/bridge)
+   and install it.
+2. Launch it and sign in with your Proton account.
+3. **Wait for the initial sync.** Bridge downloads and decrypts your entire
+   mailbox locally. That is CPU-bound and can take **hours** on a large
+   account. Mail that has not synced yet is invisible over IMAP, so searches
+   look sparse until it finishes. It is one-time — later syncs are incremental.
+
+If Bridge offers to configure Outlook, Apple Mail, or Thunderbird, **skip it**.
+That step is for desktop mail clients. This server is the client.
+
+## Step 2 — Install the server
+
+Pick one. Both give you a `protonmail-mcp` command.
+
+**Global install (recommended):**
 
 ```sh
-brew tap just-an-oldsalt/proto-mcp
-brew install --cask proto-mcp
-
-protonmcp setup
+npm install -g github:RayanBayat/protonmail-mcp
+protonmail-mcp --help
 ```
 
-That's the whole thing. `setup` signs you in, copies your mailbox index
-into a local database, starts the background service, and connects both
-Claude clients — explaining each step as it goes. Restart Claude
-afterwards and the tools show up under `protonmcp` in `/mcp`.
+**Or run it without installing:**
 
-It's safe to re-run: completed steps are skipped, so it doubles as a
-repair command.
+```sh
+npx github:RayanBayat/protonmail-mcp --help
+```
 
 <details>
-<summary>Prefer to run the four steps yourself?</summary>
+<summary>Or from a clone, if you want to modify it</summary>
 
 ```sh
-protonmcp login            # Proton SRP password + 2FA + key unlock
-protonmcp backfill         # one-time: pull your message envelopes into the local mirror
-protonmcp daemon install   # register + start the background daemon
-protonmcp install          # connect it to Claude Desktop + Claude Code
+git clone https://github.com/RayanBayat/protonmail-mcp.git
+cd protonmail-mcp
+npm install -g pnpm
+pnpm install --frozen-lockfile
+node src/cli.mjs --help
 ```
 
+Everywhere below, read `protonmail-mcp <command>` as `node src/cli.mjs <command>`.
 </details>
 
-Signed, notarized binaries — no Gatekeeper warning, no network listener.
+On PowerShell, if the execution policy blocks `npm.ps1`, use `npm.cmd` instead.
 
-Anything not working? **`protonmcp doctor`** checks every piece of the
-install and tells you the one command that fixes it:
+## Step 3 — Collect two things from Bridge
 
-```
-[  ok  ] protonmcpd             version 1.0.2
-[  ok  ] login                  session present in keychain
-[ FAIL ] local mirror           exists but holds no messages
-[  ok  ] daemon                 running (pid 4875), socket healthy
+**a) Your IMAP credentials.** In Bridge, select your account, then open
+**Mailbox details**. Note the username and the **generated password**.
 
-To fix:
-  local mirror
-      protonmcp backfill
-```
+> ⚠️ That generated password is *not* your Proton account password. Bridge
+> creates a separate one for local mail clients. This server has no use for
+> your real password and will never ask for it.
 
-After `brew upgrade --cask proto-mcp`, run `protonmcp daemon restart` so
-the daemon picks up the new build.
+**b) The TLS certificate.** In Bridge: **Settings → Advanced → Export TLS
+certificates**, and pick a folder such as your Desktop. Bridge writes
+`cert.pem` and `key.pem`. You want **`cert.pem`**, the public one. Setup
+refuses any file that contains a private key.
 
-> Prefer to build it yourself? See [Build from source](#build-from-source).
+## Step 4 — Run setup
 
-## What Claude can do
-
-34 tools, grouped by what they touch. Reads run free; everything that
-changes state is deny-by-default and Touch-ID gated.
-
-| | |
-|---|---|
-| 📖 **Read & search** | List, full-text search, read messages, reconstruct threads, list attachments, list labels/folders, sync. |
-| 🗂️ **Organize** | Mark read/unread, move, label, trash. |
-| 🏷️ **Labels & folders** | Full CRUD with colour-palette validation. |
-| ✍️ **Drafts** | Create, update, delete, list. |
-| 📤 **Send** | Send, reply, reply-all, forward, send-draft — each one re-prompts. |
-| 📎 **Attachments** | Decrypt and download, save to disk. |
-| 📅 **Calendar** | List calendars, browse/search events by date range, read full event detail. Read-only. |
-
-Full list with descriptions: **[docs/cli-reference.md](./docs/cli-reference.md)**.
-
-## Why it's safe
-
-proto-mcp is built so that an LLM driving your mailbox is a *convenience*,
-never a *liability*. The guarantees that make that true:
-
-- **🔐 Your fingerprint on every send.** Each write fires a native prompt
-  showing the **literal** recipients and subject. `mail_send` has a TTL of
-  zero, so it re-prompts every single time. No blanket approvals for sends.
-- **🛡️ Default-deny by construction.** Unknown tools don't run, and the
-  daemon refuses to start if any registered tool lacks an explicit policy
-  entry — you can't accidentally ship an unguarded write.
-- **🍎 Signed, notarized, and self-checking.** Hardened-runtime,
-  Developer-ID-signed, Apple-notarized binaries, plus a SHA-256 integrity
-  check at startup that refuses to run a swapped daemon.
-- **🔒 Locks when you walk away.** Screen lock, sleep, or an idle timer
-  zero the in-memory session; resuming takes Touch ID.
-- **🧾 Honest, redacted audit log.** Every call is logged — secrets
-  scrubbed, bodies reduced to `{sha256, bytes}`, recipients kept literal
-  so the verification chain stays truthful.
-- **🏠 Local-only.** The daemon listens on a `0600` Unix socket, never a
-  network port. Mail content goes to Proton over TLS; nothing else leaves.
-
-What a prompt actually looks like:
-
-```
-┌──────────────────────────────────────────────┐
-│ Send mail_send?                              │
-│                                              │
-│ To: alice@example.com                        │
-│ CC: charlie@example.com                      │
-│ Subject: Re: gear list                       │
-│                                              │
-│ [ Cancel ]              [ Send & Touch ID ]  │
-└──────────────────────────────────────────────┘
-```
-
-The full threat model — including the risks proto-mcp **doesn't** defend
-against — is in **[docs/security.md](./docs/security.md)**. Read it before
-you point this at a live mailbox.
-
-## How it works
-
-One background daemon holds your Touch-ID-unlocked session and serves
-every tool over a local socket. Claude Desktop and Claude Code each attach
-through a tiny forwarder, so they share one session: unlock once, use
-everywhere; lock once, everything locks.
-
-```
-Claude Desktop ─┐                          ┌─ go-proton-api + GPG
-Claude Code ────┼─ shim ─ socket ─ protonmcpd ┼─ SQLite mirror + FTS5
-                ┘     (0600)               └─ Touch ID + policy + audit
-```
-
-The full design — every binary, package, and the local mirror — is in
-**[docs/architecture.md](./docs/architecture.md)**.
-
-## Configuration
-
-Tune per-tool policy, rate limits, allowed recipients, the idle-lock
-timer, and the cached-body TTL with a single YAML file. For example, to
-cap LLM-driven sends and restrict them to one domain:
-
-```yaml
-tools:
-  mail_send:
-    decision: prompt
-    rate_limit: 5/hour
-    allowed_recipients: ["@mydomain.com"]
-idle_lock_minutes: 30
-```
-
-Full reference, plus locking and the audit/observability commands:
-**[docs/configuration.md](./docs/configuration.md)**.
-
-## Build from source
-
-Requires macOS 13+, [Go 1.26.5+](https://go.dev/dl/), and Xcode Command
-Line Tools (for `swiftc`).
+**This must run in a real terminal window** — PowerShell, Terminal, or your
+shell of choice. It deliberately refuses to run through an AI agent, an IDE
+task runner, or anything else that pipes stdin, because without a real
+terminal it cannot hide what you type.
 
 ```sh
-git clone https://github.com/just-an-oldsalt/proto-mcp.git
-cd proto-mcp
-make all                          # builds bin/* + the Swift helpers
-./bin/protonmcp setup
+protonmail-mcp setup
 ```
 
-`make all` builds for your own architecture. `make universal` builds
-arm64 + x86_64 and `lipo`s them into `bin/universal/` — that's what a
-release ships, so the cask works on both Apple silicon and Intel.
+It asks, in order:
 
-Source builds are ad-hoc signed by default and work fully (the Touch ID
-gate, policy, audit, and lock/unlock all run the same). For a
-locally-signed build, see
-[`scripts/signing-setup.md`](./scripts/signing-setup.md).
-
-## Good to know
-
-- **macOS only.** The keystore and biometric helpers use
-  `Security.framework`, `LAContext`, and AppKit. Linux builds compile for
-  testing, but the auth flow won't work.
-- **Be a good Proton citizen.** proto-mcp currently sends Proton Bridge's
-  `AppVersion` header while a dedicated identifier is requested from Proton
-  (see [`docs/proton-appversion-request.md`](./docs/proton-appversion-request.md)).
-  Don't rate-abuse, scrape, or run multi-account automation through it —
-  anything that violates Proton's [Terms](https://proton.me/legal/terms)
-  is no less a violation for borrowing Bridge's header.
-- **Cached bodies are plaintext-in-SQLite.** Decrypted message bodies are
-  cached locally (TTL-bounded, `secure_delete` on). On a stolen, imaged
-  disk that's recoverable cleartext until purged. Envelope encryption
-  (SQLCipher) is a post-1.0 item. `protonmcp purge --older-than 7d
-  --vacuum` shrinks the window now.
-- **Personal use.** Built for one person and their mailbox on their Mac.
-
-## Documentation
-
-| Doc | Contents |
+| Prompt | Answer |
 |---|---|
-| [docs/architecture.md](./docs/architecture.md) | The daemon model, binaries, packages, and local mirror. |
-| [docs/security.md](./docs/security.md) | Security layers + the full, honest threat model. |
-| [docs/configuration.md](./docs/configuration.md) | Policy YAML, locking, observability, purging. |
-| [docs/cli-reference.md](./docs/cli-reference.md) | Every CLI command and all 34 MCP tools. |
-| [SECURITY.md](./SECURITY.md) | Security policy + per-defect fix log / audit trail. |
-| [TESTING.md](./TESTING.md) | End-to-end validation playbook. |
+| IMAP port | `1143` — Bridge's default; check Mailbox details if unsure |
+| Connection security | `starttls` — Bridge's default |
+| Path to certificate | full path to `cert.pem` from Step 3b |
+| Trust this certificate? | compare the printed SHA-256 against Bridge's, then `yes` |
+| Bridge IMAP username | from Step 3a |
+| Bridge IMAP password | the generated one; hidden as you type |
+| Vault passphrase (×2) | **a new passphrase you invent**, 12+ characters |
 
-Issues, defects, and roadmap are tracked in Jira (project **PROTO**), the
-source of truth. `TODO.html` and `DEFECTS.html` are retained as historical
-design records from the build-out.
+The vault passphrase is not any existing password. It encrypts the credential
+vault on this machine, and you will need it each time you start your AI host.
 
-## Contributing
+Setup verifies TLS and logs into Bridge **before** writing anything, so wrong
+credentials fail without leaving a broken vault behind.
 
-PRs welcome, but **please open an issue first** — most architectural
-direction is settled, and unsolicited big-scope PRs probably won't land.
-`.github/CODEOWNERS` defines required reviewers for the
-security-load-bearing paths (`internal/redact/`, `internal/keystore/`,
-`internal/policy/`, `internal/approval/`, `helpers/touchid/`,
-`helpers/lockwatch/`).
+## Step 5 — Verify
 
-## License & acknowledgements
+```sh
+protonmail-mcp doctor
+```
 
-GPLv3 — see [`LICENSE`](./LICENSE). proto-mcp depends transitively on
-`proton-bridge` (also GPLv3) via `go-proton-api`.
+Expected:
 
-- [**Proton AG**](https://proton.me) for `proton-bridge` and
-  `go-proton-api`, on which the entire crypto + transport layer rests.
-- [**Anthropic**](https://anthropic.com) for the Model Context Protocol
-  and the Claude clients this server targets.
-- Every defect that took the shape it did because `cmd-r`,
-  `claude-review`, `claude-security-review`, or a live testing session
-  looked at the code more carefully than I would have alone.
+```
+Connected to Proton Bridge over verified TLS. Read-only access works (19 folders).
+```
+
+If it fails, see [Troubleshooting](#troubleshooting).
+
+## Step 6 — Connect your AI host
+
+Print the configuration for your client:
+
+```sh
+protonmail-mcp config
+```
+
+Paste the output into your client's MCP configuration. **No secret goes into
+that file.** The server reads the vault passphrase from the
+`PROTONMAIL_MCP_PASSPHRASE` environment variable instead, which is what Step 7
+is for.
+
+For Claude Code:
+
+```sh
+claude mcp add protonmail -- protonmail-mcp serve
+```
+
+For Claude Desktop, Codex, and other stdio clients, use the JSON or TOML block
+that `config` prints.
+
+## Step 7 — Start your host with the vault unlocked
+
+```sh
+protonmail-mcp launch claude
+```
+
+`launch` prompts once for the vault passphrase, verifies it, then starts the
+named program with that passphrase in its environment — keeping it out of your
+shell history, your process arguments, and your configuration files.
+
+Substitute whichever host you use, such as `codex`. On Windows you can also run
+`protonmail-mcp launch powershell.exe -NoExit` and start your client from
+inside that session.
+
+## Step 8 — Add the skill (optional)
+
+Copy `skills/protonmail/` into your host's skills directory. It tells the model
+how to paginate searches and — more importantly — to treat mail as untrusted
+data rather than as instructions.
+
+---
+
+## Troubleshooting
+
+| Symptom | Cause and fix |
+|---|---|
+| `Run this command in an interactive terminal` | `setup` was run through something that pipes stdin. Open a real terminal window. |
+| `Bridge is not configured or its vault is invalid` | Setup never completed, or `PROTONMAIL_MCP_PASSPHRASE` is not set. Re-run setup, or start via `launch`. |
+| `Cannot unlock vault: wrong passphrase or damaged vault` | Wrong vault passphrase — the one you invented in Step 4, not your Proton or Bridge password. |
+| `TLS certificate verification failed` | Bridge regenerated its certificate. Export it again (Step 3b) and re-run setup. |
+| `Bridge rejected the credentials` | You used your Proton password instead of Bridge's generated one. |
+| `Cannot complete the mailbox request` | Bridge is not running or not signed in. Start it, then re-run `doctor`. |
+| Searches return little or nothing | Bridge's initial sync is incomplete. Check its progress and wait. |
+| A message body comes back empty | Please report it. HTML-only mail is converted to text, so a blank body is a bug. |
+
+---
+
+## Tools
+
+| Tool | Inputs | Returns |
+|---|---|---|
+| `mailbox_status` | none | connectivity and read-only state, no mail |
+| `mailbox_folders` | none | up to 200 selectable folder paths |
+| `mailbox_search` | folder, `text`/`from`/`subject`/`unread`, `limit` 1–50, `cursor` | summaries and a continuation cursor |
+| `mailbox_read` | `message_id` | headers, up to 20,000 characters of text, attachment metadata |
+
+All four are annotated read-only and idempotent. Search walks a bounded window
+of recent UIDs newest-first, so an empty page can still return a cursor —
+follow it until it is null. HTML-only mail is converted to text locally with
+link destinations preserved; `text_source` tells you which part the text came
+from.
+
+## Privacy
+
+Mail returned by these tools enters the host conversation and **may be sent to
+that host's AI provider**. Running the server locally does not make cloud model
+processing local. Nothing here adds analytics, telemetry, webhooks, or remote
+content loading; at runtime the only outbound connection is to Bridge on
+`127.0.0.1`. Message bodies are never written to disk — there is no cache.
+
+See [SECURITY.md](SECURITY.md) for the boundaries and residual risks, and
+[SECURITY-REVIEW.md](SECURITY-REVIEW.md) for what was inherited from upstream
+and why it was left behind.
+
+## Development
+
+```sh
+npm install -g pnpm
+pnpm install --frozen-lockfile
+pnpm test
+pnpm audit --prod
+```
+
+pnpm is used here for the reasons `uv` gets used in Python projects: it is
+fast, and its non-hoisted `node_modules` means a module can only import what
+`package.json` actually declares — so an undeclared transitive dependency
+fails here rather than in someone else's install. `pnpm-lock.yaml` is the
+source of truth; `package-lock.json` is deliberately absent.
+
+End users do not need pnpm. `npm install -g github:...` resolves the exact
+versions pinned in `package.json`.
+
+Tests run against a local TLS IMAP fixture with ephemeral certificates and
+synthetic messages. The fixture rejects mutating commands, so a regression that
+tried to write would fail rather than touch a real mailbox. CI runs the suite on
+Ubuntu, Windows, and macOS against Node 22 and 24, audits dependencies, and
+installs the package from a clean checkout on all three systems.
+
+Design and rationale: [SPEC.md](SPEC.md). Progress and evidence:
+[IMPLEMENTATION.md](IMPLEMENTATION.md).
+
+Adding a tool or skill: [CONTRIBUTING.md](CONTRIBUTING.md) explains module
+boundaries, focused pull requests, and developer checks.
+
+## Attribution and license
+
+A fork of [`just-an-oldsalt/proto-mcp`](https://github.com/just-an-oldsalt/proto-mcp),
+a macOS-only Go implementation that logged into Proton's private API directly.
+This fork replaces that runtime with a portable Node.js server built on Proton's
+own Bridge; the original history is preserved in this repository's git log.
+
+GPL-3.0-only. See [LICENSE](LICENSE).
