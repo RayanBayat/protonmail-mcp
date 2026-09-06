@@ -1,12 +1,10 @@
 version: 2
 
-# Group dependency PRs weekly to keep the noise manageable. Bridge-
-# adjacent ProtonMail packages and the resty fork are pinned via the
-# `replace` directive (see go.mod) and are deliberately NOT auto-
-# updated — they have to track proton-bridge releases.
+# The runtime is a single pinned npm dependency set (mailbox-mcp/). Grouping
+# weekly keeps review noise low while still surfacing security updates.
 updates:
-  - package-ecosystem: gomod
-    directory: "/"
+  - package-ecosystem: npm
+    directory: "/mailbox-mcp"
     schedule:
       interval: weekly
       day: monday
@@ -14,21 +12,9 @@ updates:
       timezone: Etc/UTC
     open-pull-requests-limit: 5
     groups:
-      go-deps:
+      npm-deps:
         patterns:
           - "*"
-        exclude-patterns:
-          - "github.com/ProtonMail/*"
-          - "github.com/go-resty/resty/v2"
-    # `exclude-patterns` only prevents GROUPING — Dependabot would still
-    # open individual PRs for the excluded packages. `ignore` actually
-    # suppresses them. The ProtonMail packages and the resty fork are
-    # pinned to whatever proton-bridge ships (see go.mod's `replace`
-    # directive); bumping past that breaks the crypto path. See PR #16
-    # (closed) for the prior version that almost shipped.
-    ignore:
-      - dependency-name: "github.com/ProtonMail/*"
-      - dependency-name: "github.com/go-resty/resty/v2"
 
   - package-ecosystem: github-actions
     directory: "/"

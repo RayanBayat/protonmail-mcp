@@ -1,0 +1,9 @@
+node_modules/
+.npm-cache/
+test-output/
+*.xml
+*.pem
+*.crt
+config.json
+vault.json
+vault.json.*

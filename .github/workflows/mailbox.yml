@@ -1,0 +1,65 @@
+name: mailbox
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: mailbox-mcp
+
+jobs:
+  test:
+    name: test (${{ matrix.os }}, node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node: ['22', '24']
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: mailbox-mcp/package-lock.json
+      # Third-party install scripts must never run against this dependency set.
+      - run: npm ci --ignore-scripts
+      # Diagnostic only: Windows runners ship openssl outside PATH and the test
+      # fixture falls back to the Git for Windows copy.
+      - run: openssl version
+        continue-on-error: true
+      - run: npm test
+
+  audit:
+    name: audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: mailbox-mcp/package-lock.json
+      - run: npm ci --ignore-scripts
+      - run: npm audit --omit=dev --audit-level=high
+      # The published package must not carry a vault, certificate or local config.
+      - name: check packaged files
+        run: |
+          npm pack --dry-run --json > /tmp/pack.json
+          node --input-type=module -e '
+            import { readFile } from "node:fs/promises";
+            const [pack] = JSON.parse(await readFile("/tmp/pack.json", "utf8"));
+            const leaked = pack.files.map(f => f.path).filter(p =>
+              /(^|\/)(vault\.json|config\.json|node_modules\/)|\.(pem|crt|key|p12)$/.test(p));
+            if (leaked.length) { console.error("Refusing to package:", leaked); process.exit(1); }
+            console.log(`${pack.files.length} files packaged, none sensitive.`);
+          '
