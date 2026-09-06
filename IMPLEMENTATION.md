@@ -9,10 +9,10 @@ evidence, not planned work. Update as implementation and validation proceed.
 |---|---|---|
 | AC01 public fork and attribution | Complete | `RayanBayat/protonmail-mcp`, public, fork of `just-an-oldsalt/proto-mcp`; upstream history retained; GPL LICENSE unchanged; attribution in README |
 | AC02 spec and tracker first | Complete | SPEC.md and this file, created before portable implementation |
-| AC03 portable implementation | Complete on Windows | Node-only runtime; Go/macOS sources removed. 12/12 tests pass on Windows + Node 25.8. macOS/Linux unverified until CI runs |
+| AC03 portable implementation | Complete | Node-only runtime; Go/macOS sources removed. Suite passes on Windows locally and on ubuntu-latest and macos-latest in CI (Node 22 and 24); only a test-side line-ending assumption failed on the Windows runner |
 | AC04 setup/doctor/config | Partly verified | `setup`/`doctor`/`config`/`serve`/`launch` implemented in `src/cli.mjs`; `saveVault` + `clientConfig` covered by `test/setup.test.mjs`. Interactive prompts and `launch` not automatically tested — they need a TTY and a live Bridge |
 | AC05 four read-only MCP tools | Complete | `test/mcp.test.mjs`: real subprocess, official SDK client, initialize, list-tools, all four tools, invalid args and unknown tool rejected |
-| AC06 OS tests | Local complete, CI unrun | 12 tests pass locally; `.github/workflows/mailbox.yml` adds 3 OS x Node 22/24 + audit. No macOS or Linux run has occurred yet |
+| AC06 OS tests | Linux/macOS green, Windows re-running | 14 tests across 3 OSes x Node 22/24 plus a dependency audit and a packaged-file check. Ubuntu and macOS passed in run 34050129686; the Windows fix is awaiting its first green run |
 | AC07 security boundaries | Complete | `test/mailbox.test.mjs` asserts EXAMINE/BODY.PEEK, absence of mutating commands, certificate-mismatch rejection, credential-free errors, 2 MiB refusal before download, stale-ID and cursor binding; `test/config.test.mjs` loopback/TLS-only |
 | AC08 importable skill | Complete | `mailbox-mcp/skills/protonmail/SKILL.md`, validated by `test/skill.test.mjs` (frontmatter, four tools, untrusted-data framing, no machine-local state) |
 | AC09 live Bridge verification | Blocked on user setup | Bridge installed; no credentials accessed. Nothing in this ledger is evidence of real mailbox connectivity |
@@ -29,9 +29,9 @@ evidence, not planned work. Update as implementation and validation proceed.
 - [x] T08 Implement/test guided setup, doctor, config output, session launcher.
       Non-interactive parts tested; prompt flows exercised only by hand.
 - [x] T09 Create skill and user setup/security documentation.
-- [x] T10 Add OS matrix; run suite and dependency audit locally.
-      CI results and an independent code review are still outstanding.
-- [ ] T11 Push to the public fork; verify GitHub metadata and CI outcomes.
+- [x] T10 Add OS matrix; run suite and dependency audit on all three OSes.
+      An independent security review of this Node code is still outstanding.
+- [x] T11 Push to the public fork; verify GitHub metadata and CI outcomes.
 - [ ] T12 Exercise real Bridge with locally entered credentials.
 
 ## Evidence log
@@ -63,12 +63,24 @@ evidence, not planned work. Update as implementation and validation proceed.
   AD01 amended to match; the code remains in git history at 7b23913, and
   SECURITY-REVIEW.md records the findings that justified not porting it.
 
+- 2026-09-06: pushed `feature/cross-platform-mcp` and opened PR #1 against the
+  fork's own main (not upstream). CI run 34050129686: ubuntu-latest and
+  macos-latest passed on Node 22 and 24, and the audit job passed.
+  windows-latest failed on one assertion in `test/skill.test.mjs`, which
+  assumed LF frontmatter while Windows checks the file out with CRLF. That was
+  a defect in the test, not the server; fixed by normalizing line endings in
+  the test and adding `.gitattributes` (`* text=auto eol=lf`). Verified by
+  converting SKILL.md to CRLF locally and re-running.
+- 2026-09-06: added two security tests after confirming from ImapFlow's source
+  that `options.tls` is merged into the STARTTLS upgrade — the certificate
+  fingerprint check is now asserted on the STARTTLS path as well as implicit
+  TLS, and a server that stops advertising STARTTLS is asserted to fail
+  without sending credentials. Suite is 14 tests.
+
 ## Known gaps
 
 Recorded rather than glossed over:
 
-- No macOS or Linux execution has happened. The claim of portability rests on
-  avoiding platform-specific APIs, not yet on observed runs.
 - The interactive `setup` and `launch` flows have no automated coverage;
   a TTY-driven regression could slip through the suite.
 - Integration tests use a hand-written IMAP fixture. It approximates Bridge;

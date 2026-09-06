@@ -7,7 +7,9 @@ const directory = fileURLToPath(new URL('../skills/protonmail/', import.meta.url
 
 test('the skill is importable, names its MCP dependency and marks mail untrusted', async () => {
   assert.deepEqual((await readdir(directory)).sort(), ['SKILL.md']);
-  const skill = await readFile(new URL('SKILL.md', `file://${directory}`), 'utf8');
+  // Windows checks the file out with CRLF; the skill must parse either way.
+  const raw = await readFile(new URL('SKILL.md', `file://${directory}`), 'utf8');
+  const skill = raw.replace(/\r\n/g, '\n');
   const frontmatter = /^---\n([\s\S]*?)\n---\n/.exec(skill);
   assert.ok(frontmatter, 'SKILL.md needs YAML frontmatter');
   assert.match(frontmatter[1], /^name: protonmail$/m);
@@ -20,5 +22,5 @@ test('the skill is importable, names its MCP dependency and marks mail untrusted
   assert.match(skill, /read-only/i);
   assert.match(skill, /Proton Mail Bridge/);
   // A skill is copied between machines and hosts: it must carry no local state.
-  assert.ok(!/PROTONMAIL_MCP_PASSPHRASE|C:\\Users|\/Users\/|\/home\//.test(skill));
+  assert.ok(!/PROTONMAIL_MCP_PASSPHRASE|C:\Users|\/Users\/|\/home\//.test(skill));
 });

@@ -12,7 +12,7 @@ const quote = value => JSON.stringify(value);
 const messages = [1, 2].map(uid => ({ uid, subject: uid === 1 ? 'First message' : 'Second message',
   raw: Buffer.from(`From: Alice <alice@example.test>\r\nTo: Reader <reader@example.test>\r\nSubject: ${uid === 1 ? 'First message' : 'Second message'}\r\nDate: Sun, 06 Sep 2026 12:00:00 +0000\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=utf-8\r\n\r\nHello from the simulated mailbox ${uid}.\r\n`) }));
 
-export async function startImap({ starttls = false } = {}) {
+export async function startImap({ starttls = false, advertiseStarttls = starttls } = {}) {
   const directory = await mkdtemp(path.join(os.tmpdir(), 'protonmail-test-'));
   const keyPath = path.join(directory, 'key.pem'), certPath = path.join(directory, 'cert.pem');
   // Windows runners rarely have openssl on PATH; Git for Windows always ships one.
@@ -32,7 +32,7 @@ export async function startImap({ starttls = false } = {}) {
   function attach(socket, greeting = true) {
     sockets.add(socket); socket.on('close', () => sockets.delete(socket)); socket.on('error', () => {});
     let buffer = '';
-    const caps = `IMAP4rev1 AUTH=PLAIN${starttls && !socket.encrypted ? ' STARTTLS' : ''}`;
+    const caps = `IMAP4rev1 AUTH=PLAIN${advertiseStarttls && !socket.encrypted ? ' STARTTLS' : ''}`;
     if (greeting) socket.write(`* OK fixture ready\r\n`);
     const onData = data => {
       buffer += data.toString();

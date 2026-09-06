@@ -36,6 +36,21 @@ test('rejects wrong certificates and does not leak credentials in errors', async
   await assert.rejects(service.status(), error => /certificate|TLS/.test(error.message) && !error.message.includes('fixture-password'));
 });
 
+test('the certificate fingerprint is also enforced on the STARTTLS upgrade', async t => {
+  const fixture = await startImap({ starttls: true }); t.after(() => fixture.close());
+  const other = await startImap(); t.after(() => other.close());
+  const service = new MailboxService(async () => ({ ...fixture.connection, certificate: other.connection.certificate }));
+  await assert.rejects(service.status(), error => /certificate|TLS/.test(error.message) && !error.message.includes('fixture-password'));
+});
+
+test('a server that stops advertising STARTTLS fails instead of downgrading to plaintext', async t => {
+  const fixture = await startImap({ starttls: true, advertiseStarttls: false });
+  t.after(() => fixture.close());
+  const service = new MailboxService(async () => fixture.connection);
+  await assert.rejects(service.status());
+  assert.ok(!fixture.commands.some(c => /^(LOGIN|AUTHENTICATE)/i.test(c)), 'credentials must not be sent over plaintext');
+});
+
 test('invalid arguments fail before opening a connection', async () => {
   const service = new MailboxService(async () => { throw new Error('should not connect'); });
   await assert.rejects(service.search({ limit: 999 }), /Invalid/);
