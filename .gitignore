@@ -7,6 +7,8 @@ node_modules/
 config.json
 vault.json
 vault.json.*
+*.sqlite
+*.sqlite-*
 *.pem
 *.crt
 *.key

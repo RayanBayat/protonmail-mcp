@@ -38,8 +38,17 @@ attachments at 50 metadata records. At most two mailbox operations run
 concurrently, and connections carry connect, greeting, socket, and overall
 timeouts.
 
-**No mail on disk.** Message bodies are parsed in memory and returned. Nothing
-caches, indexes, or logs them. There is no database.
+**Local mail cache.** `serve` initializes a local SQLite file next to the vault.
+It stores only the bounded, sanitized `mailbox_read` response, including text
+and attachment metadata, with a 1,000-message cap and 30-day expiration. It
+does not store raw MIME, attachment bytes, or credentials. Email text in this
+file is unencrypted. Unix file permissions are `0600`; Windows inherits the
+configuration folder ACL. Use a local, non-synced configuration directory.
+Cache keys separate Bridge connections/accounts, folders, UID validity and UID.
+Every read still authenticates to Bridge and checks validity, existence and size
+before cache lookup. Searches remain live. Deleted mail can remain on disk
+until a read detects deletion, expiration is pruned at startup/write, or the
+user runs `cache-clear`. The cache adds no network service or upload path.
 
 **No new network surface.** stdio only — no listening port, no service
 registration, no startup task, no firewall rule. No telemetry, analytics,

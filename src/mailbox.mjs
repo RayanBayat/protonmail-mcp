@@ -3,6 +3,7 @@ import { ImapFlow } from 'imapflow';
 import { simpleParser } from 'mailparser';
 import { htmlToText } from 'html-to-text';
 import { z } from 'zod';
+import { cacheAccount } from './cache.mjs';
 import { MailboxError, validateConfig, encodeMessageId, decodeMessageId, loadConnection } from './config.mjs';
 
 const field = z.string().max(512).refine(v => !/[\x00-\x1f\x7f]/.test(v));
@@ -75,7 +76,7 @@ export function publicError(error) {
 
 export class MailboxService {
   #active = 0;
-  constructor(provider = loadConnection) { this.provider = provider; }
+  constructor(provider = loadConnection, cache = null) { this.provider = provider; this.cache = cache; }
 
   async withClient(operation, signal) {
     if (this.#active >= 2) throw new MailboxError('Mailbox is busy. Retry after the current requests finish.');
@@ -91,7 +92,7 @@ export class MailboxService {
       signal?.addEventListener('abort', abort, { once: true });
       if (signal?.aborted) throw new MailboxError('Mailbox request canceled.');
       await client.connect();
-      return await operation(client);
+      return await operation(client, connection);
     } catch (error) { throw new MailboxError(publicError(error)); }
     finally { clearTimeout(timer); signal?.removeEventListener('abort', abort); client?.close(); this.#active--; }
   }
@@ -151,23 +152,32 @@ export class MailboxService {
   async read(value, signal) {
     const input = parse(readSchema, value);
     const reference = decodeMessageId(input.message_id);
-    return this.withClient(async client => {
+    return this.withClient(async (client, connection) => {
+      const account = cacheAccount(connection);
       const lock = await client.getMailboxLock(reference.folder, { readOnly: true });
       try {
+        this.cache?.invalidateFolder(account, reference.folder, String(client.mailbox.uidValidity));
         if (String(client.mailbox.uidValidity) !== reference.validity) throw new MailboxError('Mailbox changed. Search again to get a fresh message ID.');
         const metadata = await client.fetchOne(reference.uid, { uid: true, size: true }, { uid: true });
-        if (!metadata) throw new MailboxError('Message no longer exists. Search again.');
+        if (!metadata) {
+          this.cache?.remove(account, reference);
+          throw new MailboxError('Message no longer exists. Search again.');
+        }
         if (!Number.isFinite(metadata.size) || metadata.size > MAX_RAW) throw new MailboxError('Message exceeds the 2 MiB read limit. Open it in Proton Mail.');
+        const cached = this.cache?.get(account, reference, metadata.size);
+        if (cached) return cached;
         const row = await client.fetchOne(reference.uid, { source: { start: 0, maxLength: MAX_RAW + 1 } }, { uid: true });
         if (!row?.source) throw new MailboxError('Message no longer exists. Search again.');
         if (row.source.length > MAX_RAW) throw new MailboxError('Message exceeds the 2 MiB read limit. Open it in Proton Mail.');
         const mail = await simpleParser(row.source, { skipHtmlToText: false, skipTextToHtml: true, skipImageLinks: true, maxHtmlLengthToParse: MAX_RAW });
         const body = extractBody(mail);
-        return { untrusted: true, message_id: input.message_id, subject: clean(mail.subject),
+        const message = { untrusted: true, message_id: input.message_id, subject: clean(mail.subject),
           from: addresses(mail.from?.value), to: addresses(mail.to?.value), date: date(mail.date),
           text: clean(body.text, 20000), text_source: body.source, truncated: body.text.length > 20000,
           attachments: mail.attachments.slice(0, 50).map(a => ({ filename: clean(a.filename), content_type: clean(a.contentType), size_bytes: a.size })),
           attachments_truncated: mail.attachments.length > 50 };
+        this.cache?.put(account, reference, metadata.size, message);
+        return message;
       } finally { lock.release(); }
     }, signal);
   }

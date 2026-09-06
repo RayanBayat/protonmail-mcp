@@ -10,7 +10,7 @@ loopback TLS. Four tools: check status, list folders, search, read. Nothing
 sends, deletes, moves, or even marks a message read.
 
 ![platform: Windows, macOS, Linux](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue)
-![Node 22+](https://img.shields.io/badge/Node.js-22%2B-339933?logo=node.js&logoColor=white)
+![Node 22.13+](https://img.shields.io/badge/Node.js-22.13%2B-339933?logo=node.js&logoColor=white)
 ![MCP](https://img.shields.io/badge/Model%20Context%20Protocol-ready-8A63D2)
 ![license: GPLv3](https://img.shields.io/badge/license-GPLv3-blue)
 
@@ -42,7 +42,7 @@ steps in order — each depends on the one before it.
 | Requirement | How to check | Notes |
 |---|---|---|
 | **Paid Proton plan** | Proton account settings | Bridge is **not** available on free plans. This is the one thing you cannot work around. |
-| **Node.js 22+** | `node --version` | Install from [nodejs.org](https://nodejs.org) if missing or older. |
+| **Node.js 22.13+** | `node --version` | Install from [nodejs.org](https://nodejs.org) if missing or older. |
 | **Proton Mail Bridge** | see Step 1 | Free download, but requires the paid plan above. |
 
 ## Step 1 — Install and sign in to Proton Mail Bridge
@@ -225,13 +225,53 @@ follow it until it is null. HTML-only mail is converted to text locally with
 link destinations preserved; `text_source` tells you which part the text came
 from.
 
+## Local email cache
+
+Starting `serve` automatically initializes `mail-cache.sqlite` in the same
+configuration directory as the credential vault:
+
+- Windows: `%LOCALAPPDATA%\ProtonMailMCP`
+- macOS: `~/Library/Application Support/ProtonMailMCP`
+- Linux: `$XDG_CONFIG_HOME/protonmail-mcp` (default `~/.config/protonmail-mcp`)
+
+`PROTONMAIL_MCP_CONFIG_DIR` overrides this directory; use a local folder,
+outside any cloud-sync or network drive, to keep the database on your machine.
+The database uses Node's built-in SQLite and needs no separate server or port.
+
+Each successful `mailbox_read` stores the returned headers, bounded plain text,
+and attachment metadata. Repeat reads reuse this data, including after a
+restart, skipping body download and parsing. Bridge must still be running:
+each read authenticates and verifies the mailbox UID validity, message existence,
+and size before using the cache. Accounts and folders have separate cache keys.
+Searches still query Bridge; this is an on-demand read cache, not a full mailbox
+mirror or offline search index. Attachment files and raw MIME are not cached.
+
+At most 1,000 messages are retained. Entries expire after 30 days; expired rows
+are removed at server startup or the next cache write. Deleted messages are
+removed when read again, and old folder entries are removed when a read detects
+a changed UID validity. It is not a background deletion sync.
+
+**Cached email text is stored unencrypted on disk.** The credential vault remains
+encrypted. The cache file uses owner-only permissions on Unix; on Windows it
+inherits the configuration folder's permissions. To clear cached email locally:
+
+```sh
+protonmail-mcp cache-clear
+```
+
+Stop the MCP server first to prevent an in-flight read from repopulating it.
+Clearing the cache does not change anything in Proton Mail. Deleted SQLite
+content is overwritten and the database compacted, but backups and filesystem
+snapshots are outside this command's control.
+
 ## Privacy
 
 Mail returned by these tools enters the host conversation and **may be sent to
 that host's AI provider**. Running the server locally does not make cloud model
 processing local. Nothing here adds analytics, telemetry, webhooks, or remote
 content loading; at runtime the only outbound connection is to Bridge on
-`127.0.0.1`. Message bodies are never written to disk — there is no cache.
+`127.0.0.1`. Fetched email text is stored in the local SQLite cache described
+above; the server never uploads the database.
 
 See [SECURITY.md](SECURITY.md) for the boundaries and residual risks, and
 [SECURITY-REVIEW.md](SECURITY-REVIEW.md) for what was inherited from upstream

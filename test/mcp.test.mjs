@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, writeFile, rm, readFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -33,6 +33,12 @@ test('production subprocess speaks MCP and uses the encrypted vault for real IMA
   const id = results.structuredContent.messages[0].message_id;
   const read = await client.callTool({ name: 'mailbox_read', arguments: { message_id: id } });
   assert.match(read.structuredContent.text, /simulated mailbox/);
+  const database = await readFile(path.join(directory, 'mail-cache.sqlite'));
+  assert.equal(database.subarray(0, 15).toString(), 'SQLite format 3');
+  const bodyFetches = fixture.commands.filter(c => /BODY\.PEEK/.test(c)).length;
+  const cached = await client.callTool({ name: 'mailbox_read', arguments: { message_id: id } });
+  assert.deepEqual(cached.structuredContent, read.structuredContent);
+  assert.equal(fixture.commands.filter(c => /BODY\.PEEK/.test(c)).length, bodyFetches);
   const invalid = await client.callTool({ name: 'mailbox_search', arguments: { limit: 1000 } });
   assert.equal(invalid.isError, true);
   const unknown = await client.callTool({ name: 'mail_send', arguments: {} });

@@ -28,7 +28,7 @@ export async function startImap({ starttls = false, advertiseStarttls = starttls
   const key = await readFile(keyPath), certificate = await readFile(certPath, 'utf8');
   const secureContext = tls.createSecureContext({ key, cert: certificate });
   const sockets = new Set(), commands = [];
-  const state = { validity: 1, oversized: false };
+  const state = { validity: 1, oversized: false, deleted: false };
   function attach(socket, greeting = true) {
     sockets.add(socket); socket.on('close', () => sockets.delete(socket)); socket.on('error', () => {});
     let buffer = '';
@@ -58,7 +58,7 @@ export async function startImap({ starttls = false, advertiseStarttls = starttls
           socket.write(`* SEARCH ${ids.join(' ')}\r\n`); ok();
         } else if (/^UID FETCH/i.test(command)) {
           const range = command.split(' ')[2];
-          const selected = messages.filter(m => range.split(',').some(part => {
+          const selected = messages.filter(m => !state.deleted && range.split(',').some(part => {
             const [lo, hi = lo] = part.split(':').map(Number); return m.uid >= lo && m.uid <= hi;
           }));
           for (const m of selected) {

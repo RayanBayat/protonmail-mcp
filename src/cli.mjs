@@ -2,14 +2,18 @@
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { createServer } from './server.mjs';
 import { MailboxService, publicError } from './mailbox.mjs';
+import { MessageCache } from './cache.mjs';
 
 const [command = 'help', ...args] = process.argv.slice(2);
 try {
   if (command === 'serve') {
-    const server = createServer();
+    const server = createServer(new MailboxService(undefined, new MessageCache()));
     await server.connect(new StdioServerTransport());
     process.stdin.once('end', () => { void server.close(); });
     for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => { void server.close().finally(() => process.exit(0)); });
+  } else if (command === 'cache-clear') {
+    new MessageCache().clear();
+    console.log('Local email cache cleared. Proton mailbox unchanged.');
   } else if (command === 'doctor') {
     if (!process.env.PROTONMAIL_MCP_PASSPHRASE && process.stdin.isTTY) {
       const { ask } = await import('./setup.mjs');
@@ -26,6 +30,6 @@ try {
   } else if (command === 'launch') {
     await (await import('./setup.mjs')).launch(args);
   } else if (['help', '--help', '-h'].includes(command)) {
-    console.log(`ProtonMail MCP - Windows, macOS and Linux\n\nCommands:\n  setup    Configure local Proton Bridge and encrypted credentials\n  doctor   Verify TLS, login and read-only folder access\n  config   Print MCP client settings without secrets\n  serve    Run the MCP server over stdio\n  launch <program> [args...]\n           Unlock the vault and start your MCP host for this session\n\nRequires Node.js 22+ and Proton Mail Bridge (paid Proton plan).\nMail returned to an AI host may be processed by its cloud provider.`);
+    console.log(`ProtonMail MCP - Windows, macOS and Linux\n\nCommands:\n  setup    Configure local Proton Bridge and encrypted credentials\n  doctor   Verify TLS, login and read-only folder access\n  config   Print MCP client settings without secrets\n  serve    Run the MCP server over stdio with a local SQLite mail cache\n  cache-clear  Clear locally cached email (leaves Proton mail unchanged)\n  launch <program> [args...]\n           Unlock the vault and start your MCP host for this session\n\nRequires Node.js 22.13+ and Proton Mail Bridge (paid Proton plan).\nMail returned to an AI host may be processed by its cloud provider.`);
   } else { console.error('Unknown command. Run with --help.'); process.exitCode = 1; }
 } catch (error) { console.error(publicError(error)); process.exitCode = 1; }

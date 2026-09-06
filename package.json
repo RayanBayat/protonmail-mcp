@@ -18,7 +18,7 @@
     "read-only"
   ],
   "engines": {
-    "node": ">=22"
+    "node": ">=22.13.0"
   },
   "bin": {
     "protonmail-mcp": "src/cli.mjs"
